@@ -7,10 +7,11 @@ import lombok.Data;
 public class SetMpinRequest {
     @NotBlank
     private String mobile;
-    @NotBlank
-    private String otp;
-    @NotBlank
+
+
     private String mpin;
+
+    private String confirmMpin;
 
     @NotBlank(message = "IP address is required")
     private String ip;

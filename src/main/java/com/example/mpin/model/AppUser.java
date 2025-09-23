@@ -1,6 +1,9 @@
 package com.example.mpin.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,10 +22,23 @@ public class AppUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(name = "mobile", length = 20, nullable = false, unique = true)
     private String mobile;
 
+    @Column(name = "referral_code", length = 20)
+    private String referralCode;
+
     private boolean otpVerified = false;
+
+    @Column(name = "otp_hash")
+    private String otpHash;
+
+    private LocalDateTime sessionExpiry;
+    // OTP Expiry timestamp
+    private LocalDateTime otpExpiry;
+
+    @Column(name = "session_id", length = 36, unique = true)
+    private String sessionId;
 
     @Column(name = "mpin_hash")
     private String mpinHash;

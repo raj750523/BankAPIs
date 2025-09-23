@@ -17,6 +17,7 @@
           <option value="X-ID" />
           <option value="X-User-Id" />
           <option value="X-IP-Address" />
+          <option value="Session-Id" />
         </set>
       </option>
     </inspection_tool>

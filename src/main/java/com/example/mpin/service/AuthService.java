@@ -1,5 +1,8 @@
 package com.example.mpin.service;
 
+import com.example.mpin.bankapi.BankApiClient;
+import com.example.mpin.constants.LogMessages;
+import com.example.mpin.constants.ValidationMessages;
 import com.example.mpin.dto.*;
 import com.example.mpin.model.AppUser;
 import com.example.mpin.model.LoginAudit;
@@ -7,15 +10,20 @@ import com.example.mpin.model.RefreshToken;
 import com.example.mpin.repository.AppUserRepository;
 import com.example.mpin.repository.LoginAuditRepository;
 import com.example.mpin.security.JwtTokenService;
+import com.example.mpin.util.UserServiceUtils;
+import com.example.mpin.util.ValidationUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class AuthService {
 
@@ -23,8 +31,10 @@ public class AuthService {
     private final LoginAuditRepository auditRepo;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
+    private final BankApiClient bankApiClient;
     private final RestTemplate restTemplate;
-//    private final JwtTokenBlacklistService jwtTokenBlacklistService;
+    private final UserServiceUtils userUtils;
+
     private final RefreshTokenService refreshTokenService;
 
 
@@ -35,8 +45,7 @@ public class AuthService {
                        LoginAuditRepository auditRepo,
                        JwtTokenService jwtTokenService,
                        PasswordEncoder passwordEncoder,
-                       RestTemplate restTemplate,
-
+                       RestTemplate restTemplate, BankApiClient bankApiClient, UserServiceUtils userUtils,
                        RefreshTokenService refreshTokenService, RefreshTokenService refreshTokenService1) {
         this.userRepo = userRepo;
         this.auditRepo = auditRepo;
@@ -44,104 +53,136 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.restTemplate = restTemplate;
         this.refreshTokenService = refreshTokenService1;
+        this.bankApiClient = bankApiClient;
+        this.userUtils = userUtils;
     }
 
     @Transactional
     public String signupStart(SignupStartRequest req) {
-        userRepo.findByMobile(req.getMobile()).orElseGet(() -> {
-            AppUser u = new AppUser();
-            u.setMobile(req.getMobile());
-            return userRepo.save(u);
-        });
-        LoginAudit audit = new LoginAudit();
-        audit.setMobile(req.getMobile());
-        audit.setIp(req.getIp());
-        audit.setDeviceId(req.getDeviceId());
-        audit.setLatitude(req.getLatitude());
-        audit.setLongitude(req.getLongitude());
-        auditRepo.save(audit);
+        String mobile = req.getMobile().trim();
+        log.info(LogMessages.SIGNUP_REQUEST_RECEIVED, mobile);
 
-        // In real system → call Bank API to send OTP
-        return "OTP sent successfully";
+        // Validate mobile
+        userUtils.validateMobileNotBlank(mobile);
+
+        String localPattern = "^[6-9][0-9]{9}$";
+        if (!mobile.matches(localPattern)) {
+            log.warn(LogMessages.MOBILE_INVALID_PATTERN, mobile);
+            throw new IllegalArgumentException(ValidationMessages.MOBILE_INVALID_PATTERN);
+        }
+
+        if (userRepo.findByMobile(mobile).isPresent()) {
+            log.warn(LogMessages.MOBILE_ALREADY_REGISTERED, mobile);
+            throw new IllegalArgumentException(ValidationMessages.MOBILE_ALREADY_REGISTERED);
+        }
+
+        AppUser user = new AppUser();
+        user.setMobile(mobile);
+
+        if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
+            user.setReferralCode(req.getReferralCode().trim());
+            log.info(LogMessages.REFERRAL_CODE_SAVED, req.getReferralCode(), mobile);
+        }
+
+        userRepo.save(user);
+        log.info(LogMessages.USER_SAVED, mobile);
+
+        log.info(LogMessages.CALLING_BANK_API, mobile);
+        boolean otpSent = bankApiClient.sendOtp(mobile);
+        if (!otpSent) {
+            log.error(LogMessages.OTP_FAILED, mobile);
+            throw new RuntimeException(ValidationMessages.OTP_FAILED);
+        }
+
+        log.info(LogMessages.OTP_SUCCESS, mobile);
+        return ValidationMessages.OTP_SENT_SUCCESS;
+    }
+
+    @Transactional
+    public String resendOtp(ResendOtpRequest req) {
+        String mobile = req.getMobile().trim();
+        userUtils.validateMobileNotBlank(mobile);
+
+        AppUser user = userUtils.getUserByMobile(mobile);
+        if (user.isOtpVerified()) {
+            log.warn(LogMessages.MOBILE_ALREADY_VERIFIED, mobile);
+            throw new IllegalArgumentException(ValidationMessages.MOBILE_ALREADY_VERIFIED);
+        }
+
+        String otp = "1234"; // DEV
+        user.setOtpHash(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepo.save(user);
+        log.info(LogMessages.OTP_RESENT, mobile);
+        log.info(LogMessages.OTP_RESENT_SUCCESS, mobile);
+
+        return ValidationMessages.OTP_RESENT_SUCCESS;
     }
 
     @Transactional
     public String verifyOtp(VerifyOtpRequest req) {
-        AppUser user = userRepo.findByMobile(req.getMobile())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String mobile = req.getMobile();
+        String otp = req.getOtp();
 
-        // Validate OTP (dummy check for dev)
-        if (!"1234".equals(req.getOtp())) {
-            throw new RuntimeException("Invalid OTP");
+        AppUser user = userUtils.getUserByMobile(mobile);
+        userUtils.validateOtpNotBlank(otp, mobile);
+
+        boolean verified = bankApiClient.verifyOtpWithBank(mobile, otp);
+        if (!verified) {
+            log.warn(LogMessages.OTP_INVALID, mobile);
+            throw new IllegalArgumentException(ValidationMessages.OTP_INVALID);
         }
 
-        // Update user status
         user.setOtpVerified(true);
         userRepo.save(user);
 
-        // Log OTP verification attempt
-        LoginAudit audit = new LoginAudit();
-        audit.setMobile(req.getMobile());
-        audit.setIp(req.getIp());
-        audit.setDeviceId(req.getDeviceId());
-        // Optional: include latitude/longitude if available
-        audit.setLatitude(req.getLatitude());
-        audit.setLongitude(req.getLongitude());
+        log.info(LogMessages.USER_OTP_VERIFIED, mobile);
+        log.info(LogMessages.OTP_VERIFIED_SUCCESS, mobile);
 
-        // Do NOT set location
-        // audit.setLocation("OTP Verified"); // removed
-
-        auditRepo.save(audit);
-
-        return "OTP verified successfully";
+        return ValidationMessages.OTP_VERIFIED_SUCCESS;
     }
 
     @Transactional
     public String setMpin(SetMpinRequest req) {
-        AppUser user = userRepo.findByMobile(req.getMobile())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String mobile = req.getMobile().trim();
+        log.info(LogMessages.SET_MPIN_REQUEST_RECEIVED, mobile);
 
-        // Validate OTP (dummy check)
-        if (!"1234".equals(req.getOtp())) {
-            throw new RuntimeException("Invalid OTP");
+        AppUser user = userUtils.getUserByMobile(mobile);
+
+        // Validate MPIN
+        userUtils.validateMpinNotBlank(req.getMpin(), mobile);
+
+        userUtils.validateConfirmMpinNotBlank(req.getConfirmMpin(), mobile);
+
+        if (!req.getMpin().equals(req.getConfirmMpin())) {
+            log.warn(LogMessages.MPIN_NOT_MATCH, mobile);
+            throw new IllegalArgumentException(ValidationMessages.MPIN_NOT_MATCH);
         }
 
-        // Set MPIN
         user.setMpinHash(passwordEncoder.encode(req.getMpin()));
+        userRepo.save(user);
+        log.info(LogMessages.MPIN_SET_SUCCESS, mobile);
 
-//        // Optional: store IP, device, location info
-//        user.setIp(req.getIp());
-//        user.setDeviceId(req.getDeviceId());
-//        user.setLatitude(req.getLatitude());
-//        user.setLongitude(req.getLongitude());
-//
-//        userRepo.save(user);
-
-        // Optional: log this action
-        LoginAudit audit = new LoginAudit();
-        audit.setMobile(req.getMobile());
-        audit.setIp(req.getIp());
-        audit.setDeviceId(req.getDeviceId());
-        audit.setLatitude(req.getLatitude());
-        audit.setLongitude(req.getLongitude());
-        auditRepo.save(audit);
-
-        return "MPIN set successfully";
+        return ValidationMessages.MPIN_SET_SUCCESS;
     }
-
 
     @Transactional
     public JwtResponse login(LoginRequest req) {
-        AppUser user = userRepo.findByMobile(req.getMobile())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String mobile = req.getMobile().trim();
+        log.info(LogMessages.LOGIN_REQUEST, mobile);
+
+        userUtils.validateMobileNotBlank(mobile);
+        userUtils.validateMpinNotBlank(req.getMpin(), mobile);
+
+        AppUser user = userUtils.getUserByMobile(mobile);
 
         if (user.getMpinHash() == null || !passwordEncoder.matches(req.getMpin(), user.getMpinHash())) {
-            throw new RuntimeException("Invalid MPIN");
+            log.warn(LogMessages.MPIN_INVALID, mobile);
+            throw new IllegalArgumentException(ValidationMessages.MPIN_INVALID);
         }
 
-
         LoginAudit audit = new LoginAudit();
-        audit.setMobile(req.getMobile());
+        audit.setMobile(mobile);
         audit.setIp(req.getIp());
         audit.setDeviceId(req.getDeviceId());
         audit.setLocation(req.getLocation());
@@ -149,18 +190,20 @@ public class AuthService {
         audit.setLongitude(req.getLongitude());
         auditRepo.save(audit);
 
-
         Map<String, Object> claims = new HashMap<>();
-        claims.put("mobile", req.getMobile());
+        claims.put("mobile", mobile);
         claims.put("ip", req.getIp());
         claims.put("deviceId", req.getDeviceId());
         claims.put("location", req.getLocation());
 
-
-        String accessToken = jwtTokenService.generateAccessToken(claims, req.getMobile());
+        String accessToken = jwtTokenService.generateAccessToken(claims, mobile);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
+
+        log.info(LogMessages.LOGIN_SUCCESS, mobile);
+
         return new JwtResponse(accessToken, refreshToken.getToken());
     }
+
     public AccountDetailsResponse getProfileByMobile(
             String mobile,
             String ip,

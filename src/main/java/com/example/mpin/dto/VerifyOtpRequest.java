@@ -7,7 +7,7 @@ import lombok.Data;
 public class VerifyOtpRequest {
     @NotBlank
     private String mobile;
-    @NotBlank
+//    @NotBlank
     private String otp;
 
 

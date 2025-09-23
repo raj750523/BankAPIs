@@ -1,14 +1,20 @@
 package com.example.mpin.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
 public class SignupStartRequest {
 
-    @NotBlank @Pattern(regexp = "^[0-9]{10}$")
+//    @NotBlank(message = "Mobile number is required")
+//    @Size(min = 10, max = 10, message = "Mobile number must be 10 digits")
+//    @Pattern(
+//            regexp = "^[6-9][0-9]{9}$"
+    /// /            message = "Invalid mobile number. Must be 10 digits starting with 6–9"
+//    )
     private String mobile;
+
+    private String referralCode;
 
     @NotBlank
     private String ip;
@@ -16,9 +22,9 @@ public class SignupStartRequest {
     @NotBlank
     private String deviceId;
 
-    @NotBlank
+    @NotNull
     private Double latitude;
 
-    @NotBlank
+    @NotNull
     private Double longitude;
 }

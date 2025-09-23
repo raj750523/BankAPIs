@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/semb/api")
 public class AuthController {
 
     private final AuthService authService;
@@ -26,22 +26,27 @@ public class AuthController {
         this.refreshTokenService = refreshTokenService;
     }
 
-    @PostMapping("/signup/start")
+    @PostMapping("/signup")
     public ResponseEntity<String> signupStart(@RequestBody @Valid SignupStartRequest req) {
         return ResponseEntity.ok(authService.signupStart(req));
     }
 
-    @PostMapping("/signup/verify")
+    @PostMapping("/signupVerify")
     public ResponseEntity<String> verifyOtp(@RequestBody @Valid VerifyOtpRequest req) {
         return ResponseEntity.ok(authService.verifyOtp(req));
     }
 
-    @PostMapping("/signup/set-mpin")
+    @PostMapping("/signupResendOtp")
+    public ResponseEntity<String> resendOtp(@RequestBody @Valid ResendOtpRequest req) {
+        return ResponseEntity.ok(authService.resendOtp(req));
+    }
+
+    @PostMapping("/signupSetMpin")
     public ResponseEntity<String> setMpin(@RequestBody @Valid SetMpinRequest req) {
         return ResponseEntity.ok(authService.setMpin(req));
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/signupLogin")
     public ResponseEntity<JwtResponse> login(@RequestBody @Valid LoginRequest req) {
         return ResponseEntity.ok(authService.login(req));
     }
