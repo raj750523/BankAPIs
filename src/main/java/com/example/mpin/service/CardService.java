@@ -1,86 +1,134 @@
 package com.example.mpin.service;
 
+import com.example.mpin.dto.CardOtpRequest;
 import com.example.mpin.dto.CardRequest;
-import com.example.mpin.exception.ResourceNotFoundException;
+import com.example.mpin.dto.CardResponse;
 import com.example.mpin.model.AppUser;
 import com.example.mpin.model.Card;
 import com.example.mpin.model.CardType;
 import com.example.mpin.repository.AppUserRepository;
 import com.example.mpin.repository.CardRepository;
+import com.example.mpin.util.UserServiceUtils;
+import com.example.mpin.util.ValidationUtil;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
-//@Service
-//public class CardService {
-//
-//    private final CardRepository repo;
-//
-//    public CardService(CardRepository repo) {
-//        this.repo = repo;
-//    }
-//
-//    @Transactional
-//    public Card addCard(CardRequest req) {
-//        Card card = Card.builder()
-//                .holderName(req.getHolderName())
-//                .cardNumber(req.getCardNumber())
-//                .validThru(req.getValidThru())
-//                .mobile(req.getMobile())
-//                .type(CardType.valueOf(req.getType().toUpperCase()))
-//                .build();
-//        return repo.save(card);
-//    }
-//
-//    public List<Card> getAllCards() {
-//        return repo.findAll();
-//    }
-//
-//    public Card getCardById(Long id) {
-//        return repo.findById(id)
-//                .orElseThrow(() -> new RuntimeException("Card not found"));
-//    }
-//}
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class CardService {
 
     private final CardRepository repo;
     private final AppUserRepository userRepo;
+    //    private final OtpService otpService; // separate OTP service for bank-like flow
+    private final ValidationUtil validationUtil;
+    private final UserServiceUtils userUtils;
 
-    public CardService(CardRepository repo, AppUserRepository userRepo) {
-        this.repo = repo;
-        this.userRepo = userRepo;
-    }
 
     @Transactional
-    public Card addCard(CardRequest req, String mobile) {
+    public void addCard(CardRequest req, String mobile, String ip, String deviceId, Double latitude, Double longitude) {
+
         AppUser user = userRepo.findByMobile(mobile)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // ---------- Validate device & location ----------
+        userUtils.validateDeviceInfo(ip, deviceId, latitude, longitude, mobile);
+        validationUtil.validateIpFormat(ip, mobile);
+        validationUtil.validateDeviceIdFormat(deviceId, mobile);
+        if (latitude != null && longitude != null) {
+            validationUtil.validateLocation(latitude, String.valueOf(longitude), mobile);
+        }
 
         Card card = Card.builder()
                 .holderName(req.getHolderName())
-                .cardNumber(req.getCardNumber())
                 .validThru(req.getValidThru())
                 .type(CardType.valueOf(req.getType().toUpperCase()))
                 .user(user)
+                .otp("123456") // Hardcoded demo OTP
+                .verified(false)
                 .build();
 
-        return repo.save(card);
+        repo.save(card);
+
+        // In production: call bank API to send real OTP
+        log.info("Card added for {} and OTP sent: {}", mobile, card.getOtp());
     }
 
-    public List<Card> getCardsForUser(String mobile) {
+    @Transactional
+    public void verifyCardOtp(CardOtpRequest req, String mobile, String ip, String deviceId, Double latitude, Double longitude) {
+
         AppUser user = userRepo.findByMobile(mobile)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return repo.findByUser(user);
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        userUtils.validateDeviceInfo(ip, deviceId, latitude, longitude, mobile);
+
+        if (req.getCardId() == null || req.getCardId().isBlank())
+            throw new IllegalArgumentException("Card ID cannot be null or empty");
+
+        Long cardId;
+        try {
+            cardId = Long.parseLong(req.getCardId());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid Card ID format");
+        }
+
+        if (req.getOtp() == null || req.getOtp().isBlank())
+            throw new IllegalArgumentException("OTP cannot be null or empty");
+
+        if (!req.getOtp().matches("\\d{6}"))
+            throw new IllegalArgumentException("OTP must be 6 digits");
+
+        Card card = repo.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found with ID: " + cardId));
+
+        if (!card.getUser().equals(user))
+            throw new IllegalArgumentException("Card does not belong to the logged-in user");
+
+        if (!"123456".equals(req.getOtp()))
+            throw new IllegalArgumentException("Invalid OTP");
+
+        card.setVerified(true);
+        repo.save(card);
+
+        log.info("Card {} verified successfully for user {}", cardId, mobile);
     }
 
-    public Card getCardById(Long id, String mobile) {
+    public List<CardResponse> getCardsForUser(String mobile) {
         AppUser user = userRepo.findByMobile(mobile)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        return repo.findByIdAndUser(id, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Card not found or not owned by user"));
+        return repo.findByUser(user).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public CardResponse getCardById(Long id, String mobile) {
+        AppUser user = userRepo.findByMobile(mobile)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Card card = repo.findByIdAndUser(id, user)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found or not owned by user"));
+
+        return toResponse(card);
+    }
+
+    private CardResponse toResponse(Card c) {
+        return new CardResponse(
+                c.getId(),
+                c.getHolderName(),
+                c.getCardID (),
+                c.getType().name(),
+                c.getValidThru(),
+                c.isVerified()
+        );
     }
 }

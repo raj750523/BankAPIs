@@ -2,28 +2,55 @@ package com.example.mpin.util;
 
 import com.example.mpin.constants.LogMessages;
 import com.example.mpin.constants.ValidationMessages;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
+import java.util.regex.Pattern;
+
+
+@Slf4j
+@Component
+@Service
 public class ValidationUtil {
 
-    private static final Logger log = LoggerFactory.getLogger(ValidationUtil.class);
 
-    private ValidationUtil() {} // prevent instantiation
+    // Regex for IPv4
+    private static final Pattern IP_PATTERN = Pattern.compile(
+            "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    );
 
-    // Validate MPIN matches confirm MPIN
-    public static void validateMpinMatch(String mpin, String confirmMpin, String mobile) {
-        if (!mpin.equals(confirmMpin)) {
-            log.warn(LogMessages.MPIN_DOES_NOT_MATCH, mobile);
-            throw new IllegalArgumentException(ValidationMessages.MPIN_NOT_MATCH);
+    // Regex for deviceId (alphanumeric + dash, 8–64 chars)
+    private static final Pattern DEVICE_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9\\-]{8,64}$");
+
+    // ---------- IP ----------
+    public void validateIpFormat(String ip, String mobile) {
+        if (ip == null || ip.isBlank() || !IP_PATTERN.matcher(ip).matches()) {
+            log.warn(LogMessages.IP_INVALID, mobile);
+            throw new IllegalArgumentException(ValidationMessages.IP_INVALID);
         }
     }
 
-    // Validate user exists
-    public static void validateUserExists(String mobile, Object user) {
-        if (user == null) {
-            log.warn(LogMessages.USER_NOT_FOUND, mobile);
-            throw new IllegalArgumentException(ValidationMessages.USER_NOT_FOUND);
+    // ---------- Device ID ----------
+    public void validateDeviceIdFormat(String deviceId, String mobile) {
+        if (deviceId == null || deviceId.isBlank() || !DEVICE_ID_PATTERN.matcher(deviceId).matches()) {
+            log.warn(LogMessages.DEVICE_ID_INVALID, mobile);
+            throw new IllegalArgumentException(ValidationMessages.DEVICE_ID_INVALID);
+        }
+    }
+
+    // ---------- Location ----------
+    public void validateLocation(Double latitude, String longitude, String mobile) {
+        try {
+            double lat = Double.parseDouble(String.valueOf(latitude));
+            double lon = Double.parseDouble(String.valueOf(longitude));
+            if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                log.warn(LogMessages.LOCATION_INVALID, mobile);
+                throw new IllegalArgumentException(ValidationMessages.LOCATION_INVALID);
+            }
+        } catch (Exception e) {
+            log.warn(LogMessages.LOCATION_INVALID, mobile);
+            throw new IllegalArgumentException(ValidationMessages.LOCATION_INVALID);
         }
     }
 }

@@ -10,7 +10,7 @@ public class BankApiClient {
     public boolean sendOtp(String mobile) {
         log.debug("Sending OTP request to bank for mobile: {}", mobile);
         try {
-            // TODO: Replace with actual HTTP request to bank’s SMS/OTP API
+           //Replace with actual HTTP request to bank’s SMS/OTP API
             log.debug("Bank API response: success=true for mobile {}", mobile);
             return true;
         } catch (Exception e) {

@@ -32,35 +32,29 @@ import lombok.*;
 
 @Entity
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"cardNumber"})
-})
 public class Card {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String holderName;
 
-    @Column(nullable = false, length = 16, unique = true)
-    private String cardNumber;
-
-    @Column(nullable = false)
-    private String validThru; // MM/YY
+    private String cardID;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private CardType type; // CREDIT or DEBIT
+    private CardType type;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @ToString.Exclude
-    @EqualsAndHashCode.Exclude
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String validThru;
+
+    private String otp;
+
+    private boolean verified;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
     private AppUser user;
 }

@@ -10,12 +10,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ForgetMPINRequest {
 
-    @NotBlank
     private String mobile;
 
-    @NotBlank
     private String otp;
 
-    @NotBlank
     private String newMpin;
+
+    private String confirmMpin;
+
+    private String ip;
+
+    private String deviceId;
+
+    private Double latitude;
+
+    private Double longitude;
 }

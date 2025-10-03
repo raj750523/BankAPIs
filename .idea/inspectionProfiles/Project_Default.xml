@@ -6,6 +6,9 @@
         <language minSize="49" name="Java" />
       </Languages>
     </inspection_tool>
+    <inspection_tool class="ExtractMethodRecommender" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="minLength" value="537" />
+    </inspection_tool>
     <inspection_tool class="IncorrectHttpHeaderInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="customHeaders">
         <set>
@@ -18,6 +21,8 @@
           <option value="X-User-Id" />
           <option value="X-IP-Address" />
           <option value="Session-Id" />
+          <option value="Device-Id" />
+          <option value="IP-Address" />
         </set>
       </option>
     </inspection_tool>

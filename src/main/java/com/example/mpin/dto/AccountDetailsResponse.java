@@ -16,3 +16,5 @@ public class AccountDetailsResponse {
     private String ifsc;
     private BigDecimal balance;
 }
+
+

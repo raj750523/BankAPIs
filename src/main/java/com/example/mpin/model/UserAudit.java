@@ -9,16 +9,22 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter @Setter
-public class LoginAudit {
+public class UserAudit {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long userId;
+
     private String mobile;
+
     private String ip;
+
     private String deviceId;
+
     private String location;
+
     private Double latitude;
+
     private Double longitude;
 
     @CreationTimestamp

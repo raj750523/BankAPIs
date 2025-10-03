@@ -1,6 +1,9 @@
 package com.example.mpin.controller;
 
+import com.example.mpin.dto.CardOtpRequest;
 import com.example.mpin.dto.CardRequest;
+import com.example.mpin.dto.CardResponse;
+import com.example.mpin.dto.VerifyOtpRequest;
 import com.example.mpin.model.Card;
 import com.example.mpin.security.JwtTokenService;
 import com.example.mpin.service.CardService;
@@ -50,21 +53,38 @@ public class CardController {
     }
 
     @PostMapping
-    public ResponseEntity<Card> addCard(@RequestHeader("Authorization") String auth,
-                                        @Valid @RequestBody CardRequest req) {
+    public ResponseEntity<String> addCard(@RequestHeader("Authorization") String auth,
+                                          @RequestHeader("X-IP") String ip,
+                                          @RequestHeader("X-Device-Id") String deviceId,
+                                          @RequestHeader(value = "X-Latitude", required = false) Double latitude,
+                                          @RequestHeader(value = "X-Longitude", required = false) Double longitude,
+                                          @Valid @RequestBody CardRequest req) {
+
         String mobile = jwtService.extractMobileFromHeader(auth);
-        return ResponseEntity.ok(service.addCard(req, mobile));
+        service.addCard(req, mobile, ip, deviceId, latitude, longitude);
+
+        return ResponseEntity.ok("Card added successfully. OTP sent to mobile.");
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestHeader("Authorization") String auth,
+                                            @Valid @RequestBody CardOtpRequest req) {
+
+        String mobile = jwtService.extractMobileFromHeader(auth);
+        service.verifyCardOtp(req, mobile, req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude());
+
+        return ResponseEntity.ok("Card verified successfully");
     }
 
     @GetMapping
-    public ResponseEntity<List<Card>> getCards(@RequestHeader("Authorization") String auth) {
+    public ResponseEntity<List<CardResponse>> getCards(@RequestHeader("Authorization") String auth) {
         String mobile = jwtService.extractMobileFromHeader(auth);
         return ResponseEntity.ok(service.getCardsForUser(mobile));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Card> getCard(@RequestHeader("Authorization") String auth,
-                                        @PathVariable Long id) {
+    public ResponseEntity<CardResponse> getCard(@RequestHeader("Authorization") String auth,
+                                                @PathVariable Long id) {
         String mobile = jwtService.extractMobileFromHeader(auth);
         return ResponseEntity.ok(service.getCardById(id, mobile));
     }
