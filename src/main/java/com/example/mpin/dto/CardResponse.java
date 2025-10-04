@@ -8,8 +8,7 @@ import lombok.Data;
 public class CardResponse {
     private Long id;
     private String holderName;
-    private String cardNumber;
-    private String type;
+    private String maskedCardNumber;
     private String validThru;
     private boolean verified;
 }

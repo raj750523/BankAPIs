@@ -91,9 +91,21 @@ public class LogMessages {
     public static final String MPIN_MISMATCH = "MPIN not match to confirmMpin: {}";
 
     public static final String GET_ACCOUNTS_SUCCESS = "Accounts list fetched successfully for mobile: {}";
-//    public static final String GET_ACCOUNTS_SUCCESS = "Accounts list fetched successfully for mobile: {}";
+    //    public static final String GET_ACCOUNTS_SUCCESS = "Accounts list fetched successfully for mobile: {}";
 //    public static final String GET_ACCOUNT_SUCCESS = "Account details fetched successfully for mobile: {}";
     public static final String ACCOUNT_STATEMENT_FETCHED = "Account statement fetched for accountId: {} and mobile: {}";
     public static final String BANK_API_ERROR = "Bank API error: {}";
-}
 
+    //Card
+    public static final String CARD_ADD_REQUEST = "CARD_ADD_REQUEST mobile={} maskedPan={}";
+    public static final String CARD_ADD_SUCCESS = "CARD_ADD_SUCCESS mobile={} cardId={}";
+    public static final String CARD_ADD_FAILED = "CARD_ADD_FAILED mobile={} reason={}";
+
+    public static final String OTP_SENT = "OTP_SENT mobile={} maskedPan={}";
+    public static final String OTP_VERIFY_REQUEST = "OTP_VERIFY_REQUEST mobile={} maskedPan={}";
+    public static final String OTP_VERIFY_SUCCESS = "OTP_VERIFY_SUCCESS mobile={} maskedPan={}";
+    public static final String OTP_VERIFY_FAILED = "OTP_VERIFY_FAILED mobile={} reason={}";
+
+    public static final String DEVICE_VALIDATION_FAILED = "DEVICE_VALIDATION_FAILED mobile={} reason={}";
+    public static final String GET_CARDS = "GET_CARDS mobile={} count={}";
+}

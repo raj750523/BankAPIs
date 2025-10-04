@@ -5,11 +5,8 @@ import lombok.Data;
 
 @Data
 public class CardOtpRequest {
-
-    private String cardId;
-
+    private String cardNumber;
     private String otp;
-
     private String ip;
     private String deviceId;
     private Double latitude;

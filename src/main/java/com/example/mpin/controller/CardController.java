@@ -53,26 +53,26 @@ public class CardController {
     }
 
     @PostMapping
-    public ResponseEntity<String> addCard(@RequestHeader("Authorization") String auth,
-                                          @RequestHeader("X-IP") String ip,
-                                          @RequestHeader("X-Device-Id") String deviceId,
-                                          @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-                                          @RequestHeader(value = "X-Longitude", required = false) Double longitude,
-                                          @Valid @RequestBody CardRequest req) {
-
-        String mobile = jwtService.extractMobileFromHeader(auth);
-        service.addCard(req, mobile, ip, deviceId, latitude, longitude);
-
-        return ResponseEntity.ok("Card added successfully. OTP sent to mobile.");
+    public ResponseEntity<String> addCard(
+            @RequestHeader("Authorization") String auth,
+            @RequestHeader("X-IP") String ip,
+            @RequestHeader("X-Device-Id") String deviceId,
+            @RequestHeader(value = "X-Latitude", required = false) Double latitude,
+            @RequestHeader(value = "X-Longitude", required = false) Double longitude,
+            @Valid @RequestBody CardRequest request
+    ) {
+        String mobile = jwtService.extractMobileFromHeader(auth); // implement in your JwtTokenService
+        service.addCard(request, mobile, ip, deviceId, latitude, longitude);
+        return ResponseEntity.ok("Card added successfully. OTP sent to registered mobile.");
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<String> verifyOtp(@RequestHeader("Authorization") String auth,
-                                            @Valid @RequestBody CardOtpRequest req) {
-
+    public ResponseEntity<String> verifyOtp(
+            @RequestHeader("Authorization") String auth,
+            @Valid @RequestBody CardOtpRequest request
+    ) {
         String mobile = jwtService.extractMobileFromHeader(auth);
-        service.verifyCardOtp(req, mobile, req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude());
-
+        service.verifyCardOtp(request, mobile, request.getIp(), request.getDeviceId(), request.getLatitude(), request.getLongitude());
         return ResponseEntity.ok("Card verified successfully");
     }
 
@@ -83,8 +83,7 @@ public class CardController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CardResponse> getCard(@RequestHeader("Authorization") String auth,
-                                                @PathVariable Long id) {
+    public ResponseEntity<CardResponse> getCard(@RequestHeader("Authorization") String auth, @PathVariable Long id) {
         String mobile = jwtService.extractMobileFromHeader(auth);
         return ResponseEntity.ok(service.getCardById(id, mobile));
     }

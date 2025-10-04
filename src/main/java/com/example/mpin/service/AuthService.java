@@ -215,8 +215,12 @@ public class AuthService {
         AppUser user = userUtils.getUserByMobile(mobile);
 
         // ---------- Verify MPIN ----------
-        if (user.getMpinHash() == null || !passwordEncoder.matches(req.getMpin(), user.getMpinHash())) {
-            log.warn(LogMessages.MPIN_INVALID, mobile);
+        if (user.getMpinHash() == null) {
+            // for demo, accept "1234" as default MPIN
+            if (!"1234".equals(req.getMpin())) {
+                throw new IllegalArgumentException(ValidationMessages.MPIN_INVALID);
+            }
+        } else if (!passwordEncoder.matches(req.getMpin(), user.getMpinHash())) {
             throw new IllegalArgumentException(ValidationMessages.MPIN_INVALID);
         }
 

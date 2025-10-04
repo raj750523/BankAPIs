@@ -31,11 +31,9 @@ import lombok.NoArgsConstructor;
 public class CardRequest {
 
     private String holderName;
-
-    private String cardId;
-
+    private String cardNumber;
     private String validThru;
-    private String type;
+//    private String mobile;
 
 }
 

@@ -62,5 +62,16 @@ public class ValidationMessages {
 
     public static final String INVALID_DATE_RANGE = "Invalid date range";
 
+    //For Card
+    public static final String CARD_ID_BLANK = "Card number cannot be blank";
+    public static final String CARD_ID_INVALID = "Card number must be 16 digits and pass Luhn check";
+    public static final String HOLDER_NAME_BLANK = "Card holder name cannot be blank";
+    public static final String HOLDER_NAME_INVALID = "Card holder name must be 2-50 chars, letters and spaces only";
+    public static final String VALID_THRU_BLANK = "Expiry date cannot be blank";
+    public static final String VALID_THRU_INVALID = "Expiry must be in MM/yy format and a future date";
+    public static final String CARD_ALREADY_EXISTS = "Card already exists for this user";
+    public static final String OTP_FORMAT_INVALID = "OTP must be 6 digits";
+    public static final String CARD_NOT_FOUND = "Card not found or not owned by user";
+    public static final String TOO_MANY_OTP_ATTEMPTS = "Too many invalid OTP attempts. Try again later.";
 }
 
