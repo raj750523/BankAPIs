@@ -73,5 +73,13 @@ public class ValidationMessages {
     public static final String OTP_FORMAT_INVALID = "OTP must be 6 digits";
     public static final String CARD_NOT_FOUND = "Card not found or not owned by user";
     public static final String TOO_MANY_OTP_ATTEMPTS = "Too many invalid OTP attempts. Try again later.";
+
+    // Bank Transfer
+    public static final String ACCOUNT_BLANK = "Account number cannot be blank";
+    public static final String IFSC_BLANK = "IFSC code cannot be blank";
+    public static final String PAYEE_NAME_BLANK = "Payee name cannot be blank";
+    public static final String AMOUNT_INVALID = "Amount must be greater than 0";
+
+
 }
 

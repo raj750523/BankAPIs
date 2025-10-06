@@ -108,4 +108,11 @@ public class LogMessages {
 
     public static final String DEVICE_VALIDATION_FAILED = "DEVICE_VALIDATION_FAILED mobile={} reason={}";
     public static final String GET_CARDS = "GET_CARDS mobile={} count={}";
+
+
+    //Bank transfer
+    public static final String TRANSFER_REQUEST = "Transfer requested by user {} from {} to {}";
+    public static final String TRANSFER_SUCCESS = "Transfer SUCCESS: {} -> {} Amount: {}";
+    public static final String TRANSFER_FAILED = "Transfer FAILED: {} -> {} Amount: {} Reason: {}";
+    public static final String OTP_VERIFICATION = "OTP verification for user {} account {}";
 }
