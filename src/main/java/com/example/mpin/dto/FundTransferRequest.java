@@ -4,25 +4,22 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
-    @Data
-    public class FundTransferRequest {
-        @NotBlank
-        private String fromAccount;
+@Data
+public class FundTransferRequest {
 
-        @NotBlank
-        private String toAccount;
+    private String fromAccount;
 
-        @NotBlank
-        private String ifsc;
-
-        @NotBlank
-        private String payeeName;
-
-        @Positive
-        private Double amount;
-
-        @NotBlank
-        private String otp;
-    }
+    private String toAccount;
 
 
+    private String ifsc;
+
+
+    private String payeeName;
+
+    @Positive
+    private Double amount;
+
+    @NotBlank
+    private String otp;
+}

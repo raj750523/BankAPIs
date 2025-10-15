@@ -4,8 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class MpinApplication {
+public class SembaApplication {
     public static void main(String[] args) {
-        SpringApplication.run(MpinApplication.class, args);
+        SpringApplication.run(SembaApplication.class, args);
     }
 }

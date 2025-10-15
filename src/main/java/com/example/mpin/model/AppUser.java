@@ -51,6 +51,8 @@ public class AppUser {
 
     private String ifsc;
 
+    private String bankName;
+
     @Column(precision = 19, scale = 2)
     private BigDecimal balance;
 

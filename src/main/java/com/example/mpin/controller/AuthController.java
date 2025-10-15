@@ -12,9 +12,9 @@ import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
 
 @RestController
@@ -33,16 +33,18 @@ public class AuthController {
         this.refreshTokenService = refreshTokenService;
         this.customerService = customerService;
     }
-
     @PostMapping("/signup")
-    public ResponseEntity<String> signupStart(@RequestBody @Valid SignupStartRequest req) {
-        return ResponseEntity.ok(authService.signupStart(req));
+    public ResponseEntity<ApiResponses<?>> signupStart(@RequestBody @Valid SignupStartRequest req) {
+        ApiResponses<Map<String, Object>> response = authService.signupStart(req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/signupVerify")
-    public ResponseEntity<String> verifyOtp(@RequestBody @Valid VerifyOtpRequest req) {
-        return ResponseEntity.ok(authService.verifyOtp(req));
+    public ResponseEntity<ApiResponses<Map<String, Object>>> verifyOtp(@RequestBody @Valid VerifyOtpRequest req) {
+        ApiResponses<Map<String, Object>> response = authService.verifyOtp(req);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
 
     @PostMapping("/signupResendOtp")
     public ResponseEntity<String> resendOtp(@RequestBody @Valid ResendOtpRequest req) {
@@ -50,42 +52,39 @@ public class AuthController {
     }
 
     @PostMapping("/signupSetMpin")
-    public ResponseEntity<String> setMpin(@RequestBody @Valid SetMpinRequest req) {
-        return ResponseEntity.ok(authService.setMpin(req));
+    public ResponseEntity<ApiResponses<Map<String, Object>>> setMpin(@RequestBody @Valid SetMpinRequest req) {
+        ApiResponses<Map<String, Object>> response = authService.setMpin(req);
+        return ResponseEntity.status(HttpStatus.OK).body(response); // explicitly 200 OK
     }
 
     @PostMapping("/signupLogin")
-    public ResponseEntity<JwtResponse> login(@RequestBody @Valid LoginRequest req) {
-        return ResponseEntity.ok(authService.login(req));
+    public ResponseEntity<ApiResponses<Map<String, Object>>> login(@RequestBody @Valid LoginRequest req) {
+        ApiResponses<Map<String, Object>> response = authService.login(req);
+        return ResponseEntity.status(HttpStatus.OK).body(response); // 200 OK
     }
-
     @GetMapping("/signupProfile")
-    public ResponseEntity<AccountDetailsResponse> me(
+    public ResponseEntity<ApiResponses<Map<String, Object>>> getProfile(
             @RequestHeader("Authorization") String authHeader,
             @RequestHeader("X-Device-Id") String deviceId,
             @RequestHeader("X-IP") String ip,
             @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude) {
-
-        AccountDetailsResponse profile = customerService.getProfileByJwt(
-                authHeader, ip, deviceId, latitude, longitude
-        );
-        return ResponseEntity.ok(profile);
+            @RequestHeader(value = "X-Longitude", required = false) Double longitude
+    ) {
+        ApiResponses<Map<String, Object>> response = customerService.getProfile(authHeader, ip, deviceId, latitude, longitude);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<AccountDetailsResponse> getAccountById(
+    @GetMapping("/signupProfile/{id}")
+    public ResponseEntity<ApiResponses<Map<String, Object>>> getAccountById(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader,
             @RequestHeader("X-Device-Id") String deviceId,
             @RequestHeader("X-IP") String ip,
             @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-                @RequestHeader(value = "X-Longitude", required = false) Double longitude) {
-
-        AccountDetailsResponse response = customerService.getAccountDetailsByCustomerId(
-                id, authHeader, deviceId, ip, latitude, longitude
-        );
-        return ResponseEntity.ok(response);
+            @RequestHeader(value = "X-Longitude", required = false) Double longitude
+    ) {
+        ApiResponses<Map<String, Object>> response = customerService.getAccountById(id, authHeader, deviceId, ip, latitude, longitude);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @PostMapping("/refresh-token")

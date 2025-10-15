@@ -1,107 +1,70 @@
 package com.example.mpin.controller;
 
-import com.example.mpin.dto.AccountDetailsResponse;
-import com.example.mpin.dto.AccountStatementResponse;
-import com.example.mpin.dto.AccountsListResponse;
+import com.example.mpin.config.ApiConstants;
+import com.example.mpin.dto.*;
+import com.example.mpin.exception.BadRequestException;
 import com.example.mpin.security.JwtTokenService;
 import com.example.mpin.service.AccountService;
 import com.example.mpin.util.UserServiceUtils;
 import com.example.mpin.util.ValidationUtil;
 import jakarta.annotation.Nullable;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.AccessDeniedException;
+import java.util.List;
 
 @RestController
-@RequestMapping("/semb/api")
+@RequestMapping("/semb/api/accounts")
 @Slf4j
 public class AccountController {
 
-    private ValidationUtil validationUtil;
-
     private final AccountService accountService;
-
-    private final UserServiceUtils userUtils;
-
     private JwtTokenService jwtTokenService;
 
 
     public AccountController(AccountService accountService, UserServiceUtils userUtils
             , ValidationUtil validationUtil) {
         this.accountService = accountService;
-        this.userUtils = userUtils;
-        this.validationUtil = validationUtil;
     }
 
-    @GetMapping("/accounts/list")
-    public ResponseEntity<AccountsListResponse> getAccounts(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestHeader("X-Device-Id") String deviceId,
-            @RequestHeader("X-IP") String ip,
-            @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude
-    ) {
-        AccountsListResponse response = accountService.getAccountsList(authHeader, deviceId, ip, latitude, longitude);
-        return ResponseEntity.ok(response);
+    @PostMapping("/add")
+    public ResponseEntity<ApiResponse<AccountResponse>> addAccount(
+            @RequestHeader(value = "Authorization", required = true) String auth,
+            @RequestBody @Valid AccountRequest req) {
+
+
+        AccountResponse resp = accountService.addAccount(auth, req);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(resp));
     }
 
-    @GetMapping("/accounts/details/{id}")
-    public ResponseEntity<AccountDetailsResponse> getAccountById(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String authHeader,
-            @RequestHeader("X-Device-Id") String deviceId,
-            @RequestHeader("X-IP") String ip,
-            @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude) throws AccessDeniedException {
+    @GetMapping("/listOfAccounts")
+    public ResponseEntity<ApiResponse<List<AccountResponse>>> getAllAccounts(
+            @RequestHeader("Authorization") String auth) {
 
-        AccountDetailsResponse response = accountService.getAccountDetailsById(id, authHeader, deviceId, ip, latitude, longitude);
-        return ResponseEntity.ok(response);
+        List<AccountResponse> resp = accountService.getAccounts(auth);
+        return ResponseEntity.ok(new ApiResponse<>(resp));
     }
 
-    @GetMapping("/accounts/{id}/statement")
-    public ResponseEntity<AccountStatementResponse> getAccountStatement(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String authHeader,
-            @RequestHeader("X-Device-Id") String deviceId,
-            @RequestHeader("X-IP") String ip,
-            @RequestHeader(value = "X-Latitude", required = false) Double latitude,
-            @RequestHeader(value = "X-Longitude", required = false) Double longitude) throws AccessDeniedException {
+    @GetMapping("/by-number/{accountNumber}")
+    public ResponseEntity<ApiResponse<AccountResponse>> getAccountByNumber(
+            @RequestHeader("Authorization") String auth,
+            @PathVariable String accountNumber) {
 
-        AccountStatementResponse response = accountService.getAccountStatement(
-                id, authHeader, deviceId, ip, latitude, longitude
-        );
-
-        return ResponseEntity.ok(response);
+        AccountResponse resp = accountService.getAccountByNumber(auth, accountNumber);
+        return ResponseEntity.ok(new ApiResponse<>(resp));
     }
 
-    @GetMapping("/{id}/statement/download")
-    public ResponseEntity<byte[]> downloadStatement(
-            @PathVariable Long id,
-            @RequestParam String type,
-            @RequestParam String ip,
-            @RequestParam String deviceId,
-            @RequestParam @Nullable Double latitude,
-            @RequestParam @Nullable String longitude,
-            @RequestHeader("Authorization") String jwt
-    ) throws AccessDeniedException {
-        log.info("Statement download request: userId={}, type={}, ip={}, deviceId={}", id, type, ip, deviceId);
+    @GetMapping("/balance/{accountNumber}")
+    public ResponseEntity<ApiResponse<AccountResponse>> getAccountBalance(
+            @RequestHeader("Authorization") String auth,
+            @PathVariable String accountNumber) {
 
-        // ---------- JWT Validation ----------
-        userUtils.validateJwt(jwt, id);
-
-        // ---------- Device Info Validation ----------
-        userUtils.validateDeviceInfo(ip, deviceId, latitude, longitude != null ? Double.valueOf(longitude) : null, String.valueOf(id));
-
-        // ---------- IP and Device Validation ----------
-        validationUtil.validateIpFormat(ip, String.valueOf(id));
-        validationUtil.validateDeviceIdFormat(deviceId, String.valueOf(id));
-        if (latitude != null && longitude != null) {
-            validationUtil.validateLocation(latitude, longitude, String.valueOf(id));
-        }
-
-        // ---------- Generate and Stream File ----------
-        return accountService.generateStatementDownload(id, type);
+        AccountResponse resp = accountService.getAccountBalance(auth, accountNumber);
+        return ResponseEntity.ok(new ApiResponse<>(resp));
     }
 }

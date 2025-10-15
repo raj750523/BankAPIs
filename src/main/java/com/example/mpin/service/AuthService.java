@@ -1,5 +1,6 @@
 package com.example.mpin.service;
 
+import com.example.mpin.GlobalException.GlobalException;
 import com.example.mpin.bankapi.BankApiClient;
 import com.example.mpin.constants.LogMessages;
 import com.example.mpin.constants.ValidationMessages;
@@ -14,6 +15,7 @@ import com.example.mpin.util.UserServiceUtils;
 import com.example.mpin.util.ValidationUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,28 +63,25 @@ public class AuthService {
     }
 
     @Transactional
-    public String signupStart(SignupStartRequest req) {
+    public ApiResponses<Map<String, Object>> signupStart(SignupStartRequest req) {
         String mobile = req.getMobile().trim();
         log.info(LogMessages.SIGNUP_REQUEST_RECEIVED, mobile);
-        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), req.getMobile());
 
-        // Validate mobile
+        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), mobile);
         userUtils.validateMobileNotBlank(mobile);
 
-        String localPattern = "^[6-9][0-9]{9}$";
-        if (!mobile.matches(localPattern)) {
+        if (!mobile.matches("^[6-9][0-9]{9}$")) {
             log.warn(LogMessages.MOBILE_INVALID_PATTERN, mobile);
-            throw new IllegalArgumentException(ValidationMessages.MOBILE_INVALID_PATTERN);
+            throw new GlobalException(ValidationMessages.MOBILE_INVALID_PATTERN, HttpStatus.BAD_REQUEST.value());
         }
 
-        // Validate IP, Device ID, and Location
         validationUtil.validateIpFormat(req.getIp(), mobile);
         validationUtil.validateDeviceIdFormat(req.getDeviceId(), mobile);
         validationUtil.validateLocation(req.getLatitude(), String.valueOf(req.getLongitude()), mobile);
 
         if (userRepo.findByMobile(mobile).isPresent()) {
             log.warn(LogMessages.MOBILE_ALREADY_REGISTERED, mobile);
-            throw new IllegalArgumentException(ValidationMessages.MOBILE_ALREADY_REGISTERED);
+            throw new GlobalException(ValidationMessages.MOBILE_ALREADY_REGISTERED, HttpStatus.CONFLICT.value());
         }
 
         AppUser user = new AppUser();
@@ -100,12 +99,20 @@ public class AuthService {
         boolean otpSent = bankApiClient.sendOtp(mobile);
         if (!otpSent) {
             log.error(LogMessages.OTP_FAILED, mobile);
-            throw new RuntimeException(ValidationMessages.OTP_FAILED);
+            throw new GlobalException(ValidationMessages.OTP_FAILED, HttpStatus.INTERNAL_SERVER_ERROR.value());
         }
 
         log.info(LogMessages.OTP_SUCCESS, mobile);
-        return ValidationMessages.OTP_SENT_SUCCESS;
+
+        Map<String, Object> data = Map.of(
+                "mobile", mobile,
+                "transactionId", "TXN" + System.currentTimeMillis(),
+                "expiresIn", 300
+        );
+
+        return new ApiResponses<>("SUCCESS", HttpStatus.CREATED.value(), ValidationMessages.OTP_SENT_SUCCESS, data);
     }
+
 
     @Transactional
     public String resendOtp(ResendOtpRequest req) {
@@ -135,46 +142,52 @@ public class AuthService {
     }
 
     @Transactional
-    public String verifyOtp(VerifyOtpRequest req) {
+    public ApiResponses<Map<String, Object>> verifyOtp(VerifyOtpRequest req) {
         String mobile = req.getMobile();
         String otp = req.getOtp();
 
+        // Fetch user and validate
         AppUser user = userUtils.getUserByMobile(mobile);
-        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), req.getMobile());
+        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), mobile);
         userUtils.validateOtpNotBlank(otp, mobile);
 
-        // Validate IP, Device ID, and Location
         validationUtil.validateIpFormat(req.getIp(), mobile);
         validationUtil.validateDeviceIdFormat(req.getDeviceId(), mobile);
         validationUtil.validateLocation(req.getLatitude(), String.valueOf(req.getLongitude()), mobile);
 
+        // Call bank API to verify OTP
         boolean verified = bankApiClient.verifyOtpWithBank(mobile, otp);
         if (!verified) {
             log.warn(LogMessages.OTP_INVALID, mobile);
-            throw new IllegalArgumentException(ValidationMessages.OTP_INVALID);
+            throw new GlobalException(ValidationMessages.OTP_INVALID, HttpStatus.BAD_REQUEST.value());
         }
 
+        // Update user as OTP verified
         user.setOtpVerified(true);
         userRepo.save(user);
         log.info(LogMessages.USER_OTP_VERIFIED, mobile);
-
         log.info(LogMessages.OTP_VERIFIED_SUCCESS, mobile);
-        return ValidationMessages.OTP_VERIFIED_SUCCESS;
-    }
 
+        // Prepare response
+        Map<String, Object> data = new HashMap<>();
+        data.put("mobile", mobile);
+        data.put("otpVerified", true);
+
+        return new ApiResponses<>("SUCCESS", HttpStatus.OK.value(), ValidationMessages.OTP_VERIFIED_SUCCESS, data);
+    }
     @Transactional
-    public String setMpin(SetMpinRequest req) {
+    public ApiResponses<Map<String, Object>> setMpin(SetMpinRequest req) {
         String mobile = req.getMobile().trim();
         log.info(LogMessages.SET_MPIN_REQUEST_RECEIVED, mobile);
 
-        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), req.getMobile());
+        // Validate device info
+        userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), mobile);
 
+        // Get user
         AppUser user = userUtils.getUserByMobile(mobile);
 
-        // Validate MPIN
+        // Validate MPIN and Confirm MPIN
         userUtils.validateMpinNotBlank(req.getMpin(), mobile);
-
-        // Validate Confirm MPIN
         userUtils.validateConfirmMpinNotBlank(req.getConfirmMpin(), mobile);
 
         // Validate IP, Device ID, and Location
@@ -182,67 +195,66 @@ public class AuthService {
         validationUtil.validateDeviceIdFormat(req.getDeviceId(), mobile);
         validationUtil.validateLocation(req.getLatitude(), String.valueOf(req.getLongitude()), mobile);
 
+        // Check if MPIN and Confirm MPIN match
         if (!req.getMpin().equals(req.getConfirmMpin())) {
             log.warn(LogMessages.MPIN_NOT_MATCH, mobile);
-            throw new IllegalArgumentException(ValidationMessages.MPIN_NOT_MATCH);
+            throw new GlobalException(ValidationMessages.MPIN_NOT_MATCH, HttpStatus.BAD_REQUEST.value());
         }
 
+        // Save MPIN
         user.setMpinHash(passwordEncoder.encode(req.getMpin()));
         userRepo.save(user);
         log.info(LogMessages.MPIN_SET_SUCCESS, mobile);
 
-        return ValidationMessages.MPIN_SET_SUCCESS;
+        // Prepare response data
+        Map<String, Object> data = new HashMap<>();
+        data.put("mobile", mobile);
+        data.put("message", ValidationMessages.MPIN_SET_SUCCESS);
+
+        return new ApiResponses<>("SUCCESS", HttpStatus.OK.value(), ValidationMessages.MPIN_SET_SUCCESS, data);
     }
 
     @Transactional
-    public JwtResponse login(LoginRequest req) {
+    public ApiResponses<Map<String, Object>> login(LoginRequest req) {
         String mobile = req.getMobile().trim();
         log.info(LogMessages.LOGIN_REQUEST, mobile);
 
-        // Validate device info
         userUtils.validateDeviceInfo(req.getIp(), req.getDeviceId(), req.getLatitude(), req.getLongitude(), mobile);
-
-        // Validate mobile & MPIN
         userUtils.validateMobileNotBlank(mobile);
         userUtils.validateMpinNotBlank(req.getMpin(), mobile);
 
-        // ---------- Validate IP, Device ID, Location formats ----------
         validationUtil.validateIpFormat(req.getIp(), mobile);
         validationUtil.validateDeviceIdFormat(req.getDeviceId(), mobile);
         validationUtil.validateLocation(req.getLatitude(), String.valueOf(req.getLongitude()), mobile);
 
-        // ---------- Fetch user ----------
         AppUser user = userUtils.getUserByMobile(mobile);
 
-        // ---------- Verify MPIN ----------
         if (user.getMpinHash() == null) {
-            // for demo, accept "1234" as default MPIN
             if (!"1234".equals(req.getMpin())) {
-                throw new IllegalArgumentException(ValidationMessages.MPIN_INVALID);
+                throw new GlobalException(ValidationMessages.MPIN_INVALID, HttpStatus.UNAUTHORIZED.value());
             }
         } else if (!passwordEncoder.matches(req.getMpin(), user.getMpinHash())) {
-            throw new IllegalArgumentException(ValidationMessages.MPIN_INVALID);
+            throw new GlobalException(ValidationMessages.MPIN_INVALID, HttpStatus.UNAUTHORIZED.value());
         }
 
-        // ---------- Generate JWT access token ----------
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("mobile", mobile);
-        claims.put("deviceId", req.getDeviceId());
-
-        String accessToken = jwtTokenService.generateAccessToken(claims, mobile);
-
-        // ---------- Create Refresh Token ----------
+        String accessToken = jwtTokenService.generateAccessToken(
+                Map.of("mobile", mobile, "deviceId", req.getDeviceId()), mobile
+        );
         RefreshTokenRequest refreshRequest = new RefreshTokenRequest();
-        refreshRequest.setRefreshToken(null); // null for new token
+        refreshRequest.setRefreshToken(null);
         refreshRequest.setIp(req.getIp());
         refreshRequest.setDeviceId(req.getDeviceId());
-        refreshRequest.setLatitude(Double.valueOf(String.valueOf(req.getLatitude())));
-        refreshRequest.setLongitude(Double.valueOf(String.valueOf(req.getLongitude())));
+        refreshRequest.setLatitude(req.getLatitude());
+        refreshRequest.setLongitude(req.getLongitude());
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId(), refreshRequest);
 
+        Map<String, Object> data = new HashMap<>();
+        data.put("accessToken", accessToken);
+        data.put("refreshToken", refreshToken.getToken());
+
         log.info(LogMessages.LOGIN_SUCCESS, mobile);
-        return new JwtResponse(accessToken, refreshToken.getToken());
+        return new ApiResponses<>("SUCCESS", HttpStatus.OK.value(), ValidationMessages.LOGIN_SUCCESS, data);
     }
 
     @Transactional

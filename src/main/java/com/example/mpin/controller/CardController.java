@@ -13,32 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-//@RestController
-//@RequestMapping("/api/cards")
-//public class CardController {
-//
-//    private final CardService service;
-//
-//    public CardController(CardService service) {
-//        this.service = service;
-//    }
-//
-//    @PostMapping
-//    public ResponseEntity<Card> addCard(@RequestBody @Valid CardRequest req) {
-//        return ResponseEntity.ok(service.addCard(req));
-//    }
-//
-//    @GetMapping
-//    public ResponseEntity<List<Card>> getAllCards() {
-//        return ResponseEntity.ok(service.getAllCards());
-//    }
-//
-//    @GetMapping("/{id}")
-//    public ResponseEntity<Card> getCardById(@PathVariable Long id) {
-//        return ResponseEntity.ok(service.getCardById(id));
-//    }
-//}
-
 
 @RestController
 @RequestMapping("/api/cards")

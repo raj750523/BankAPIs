@@ -1,6 +1,8 @@
 package com.example.mpin.constants;
 
 public class ValidationMessages {
+    public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
+
     private ValidationMessages() {
     }
 
@@ -10,6 +12,8 @@ public class ValidationMessages {
     public static final String OTP_FAILED = "Failed to send OTP via Bank API for mobile";
     public static final String OTP_SENT_SUCCESS = "OTP sent successfully";
 
+    public static final String JWT_EXPIRED = "JWT token in expired";
+    public static final String JWT_EXPIREDD = "JWT token in expired";
     //Verify Otp
     public static final String USER_NOT_FOUND = "User not found";
     public static final String OTP_BLANK = "OTP cannot be blank";
@@ -79,6 +83,18 @@ public class ValidationMessages {
     public static final String IFSC_BLANK = "IFSC code cannot be blank";
     public static final String PAYEE_NAME_BLANK = "Payee name cannot be blank";
     public static final String AMOUNT_INVALID = "Amount must be greater than 0";
+
+    public static final String TRANSFER_SUCCESS = "Fund transfer completed successfully";
+    ;
+
+
+    public static final String ACCOUNT_LINKED = "Account linked successfully";
+    public static final String ACCOUNT_FETCHED = "Fetched account details successfully";
+    public static final String ACCOUNTS_FETCHED = "Fetched all linked accounts successfully";
+    public static final String BALANCE_FETCHED = "Fetched account balance successfully";
+//    public static final String ACCOUNT_NOT_FOUND = "Account not found";
+//    public static final String ACCOUNT_ALREADY_EXISTS = "Account already linked with this user";
+//    public static final String ACCOUNT_NUMBER_BLANK = "Account number cannot be blank";
 
 
 }
