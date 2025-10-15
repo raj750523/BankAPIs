@@ -70,9 +70,12 @@ public class LogMessages {
     // Profile
     public static final String PROFILE_REQUEST = "{\"event\":\"profile_request\",\"mobile\":\"{}\"}";
     public static final String PROFILE_FETCHED_SUCCESS = "{\"event\":\"profile_fetched_success\",\"mobile\":\"{}\"}";
-
-    public static final String ACCESS_DENIED = "{\"event\":\"access_denied\",\"mobile\":\"{}\"}";
-    public static final String GET_ACCOUNT_SUCCESS = "{\"event\":\"get_account_success\",\"mobile\":\"{}\"}";
+    public static final String ACCESS_DENIED = "Access denied for mobile: {}";
+    public static final String FIRST_LOGIN_FETCH_START = "First-time login for mobile={}, fetching linked bank accounts...";
+    public static final String FIRST_LOGIN_FETCH_SUCCESS = "{} accounts linked successfully for mobile={}";
+    public static final String ACCOUNT_FETCH_SUCCESS = "Fetched account details for mobile={} ({} accounts)";
+    public static final String ACCOUNT_ADDED_SUCCESS = "Account={} successfully linked for mobile={}";
+    public static final String GET_ACCOUNT_SUCCESS = "Profile fetched successfully for mobile={}";
 
     // ---------- Refresh Token ----------
     public static final String REFRESH_TOKEN_REQUEST = "Refresh token request received | deviceId={} | ip={}";
